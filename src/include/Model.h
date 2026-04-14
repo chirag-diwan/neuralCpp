@@ -23,7 +23,14 @@ struct Layer {
 
   Layer() = default;
 
-  void Populate(size_t currNeurons, size_t prevNeurons) ;
+  void Populate(size_t currNeurons, size_t prevNeurons) {
+    A.Populate(1, currNeurons, false );
+    W.Populate(prevNeurons, currNeurons, true );
+    B.Populate(1, currNeurons, true );
+    Z.Populate(1, currNeurons, false );
+    delta.Populate(1, currNeurons, false );
+    zSigmaPrime.Populate(1, currNeurons, false );
+  }
 };
 
 template <size_t inputParamCount, size_t layerCount>
@@ -84,11 +91,6 @@ float Cost(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& out
   }
 }
 
-void CostGradFinalLayer(Matrix& Activations, Matrix& Outputs, Matrix& out) ;
-void ErrorFinalLayer(Layer& last, Matrix& Outputs ) ;
-void ErrorLayer(Layer& currLayer, Layer& nextLayer ) ;
-
-
 template <size_t inputParamCount, size_t layerCount>
 void BackProp(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& output, float learningRate ) {
   for (int i = static_cast<int>(model.layers.size()) - 1; i >= 0; i--) {
@@ -122,3 +124,39 @@ void BackProp(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& 
 }
 
 
+
+void CostGradFinalLayer(Matrix& Activations, Matrix& Outputs, Matrix& out) {
+  assert(Activations.rows == Outputs.rows && Activations.cols == Outputs.cols);
+  assert(Activations.rows == out.rows && Activations.cols == out.cols);
+
+  for (size_t i = 0; i < Activations.rows * Activations.cols; i++) {
+    out[i] = 2.0f * (Activations[i] - Outputs[i]);
+  }
+}
+
+
+void ErrorFinalLayer(Layer& last, Matrix& Outputs ) {
+  {
+    DeferFree df;
+    SigmoidPrime(last.Z, last.zSigmaPrime);
+    Matrix costGrad;
+    costGrad.Populate(last.A.rows, last.A.cols, false);
+    CostGradFinalLayer(last.A, Outputs, costGrad);
+    HarmardProduct(costGrad, last.zSigmaPrime, last.delta);
+  }
+}
+
+void ErrorLayer(Layer& currLayer, Layer& nextLayer ) {
+  {
+    DeferFree df;
+
+    Matrix buf;
+    buf.Populate(nextLayer.delta.rows, nextLayer.W.rows, false );
+
+    // buf = delta^(l+1) * W^(l+1)^T
+    MatMul(nextLayer.delta, nextLayer.W, buf , CblasNoTrans , CblasTrans);
+
+    SigmoidPrime(currLayer.Z, currLayer.zSigmaPrime);
+    HarmardProduct(buf, currLayer.zSigmaPrime, currLayer.delta);
+  }
+}
