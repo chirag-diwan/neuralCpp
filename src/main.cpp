@@ -6,7 +6,7 @@
 #include <iostream>
 #include <openblas/cblas.h>
 
-thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(256*1024*1024);
+thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(1024*1024);
 
 template <size_t inputParamCount, size_t layerCount>
 void Infer(Model<inputParamCount, layerCount>& model , size_t testcount) {
@@ -108,7 +108,7 @@ int main() {
               << " | Prediction: " << std::setprecision(4) << prediction << "\n";
   }
 
-  std::cout << "Total memory usage";
+  std::cout << "Total memory usage " << __Global_Mat_Allocator->GetStrider() << "units \n";
   delete __Global_Mat_Allocator;
   return 0;
 }
