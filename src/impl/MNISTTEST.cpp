@@ -72,7 +72,7 @@ int main(){
 
     const auto epochs = 50; 
     const auto learning_rate = 1e-3;
-    const auto train_count = 100; // 10K
+    const auto train_count = 10000; // 10K
 
     std::cout << "--- Initiating Training ---\n";
 
