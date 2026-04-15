@@ -1,14 +1,13 @@
 #ifdef XOR_TEST
 #include "../include/MatMaths.h"
 #include "../include/Model.h"
-#include <array>
 #include <iostream>
 
 thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(64);
 
 int main() {
-  NeuralNetwork<2, 3> model({2, 3, 1});
-  model.Init();
+  NeuralNetwork model({2, 3, 1});
+  model.Init(2);
   
   Mat input;
   input.Populate(1, 2, false); 

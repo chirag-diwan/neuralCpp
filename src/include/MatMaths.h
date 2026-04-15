@@ -46,8 +46,8 @@ struct Mat {
 
   Mat() = default;
   Mat(Mat&&) = default;
-
-  Mat(Mat&) = delete;
+  Mat(Mat&) = default;
+  Mat(const Mat&) = default;
 
   void ViewNoAlloc(uint32_t r, uint32_t c , float* data);
 
@@ -55,6 +55,11 @@ struct Mat {
 
   float& operator[](size_t i) const ;
 
+  void operator=(Mat&& mat){
+    this->data = std::move(mat.data);
+    this->rows = mat.rows;
+    this->cols = mat.cols;
+  }
 
   template<typename T>
     void operator|=(const std::vector<T>& vals) {
@@ -142,24 +147,14 @@ inline float Reduce(Mat& A) {
 }
 
 void PrintMat(const std::string& name, const Mat& m) ;
-
-
-
-
 float Sigmoid(float a) ;
-
 float SigmoidPrime(float a) ;
-
 void Sigmoid(Mat& A, Mat& B) ;
-
 void SigmoidPrime(Mat& A, Mat& B) ;
-
 void MatSub(Mat& A, Mat& B, Mat& C) ;
-
 size_t ArgMax(const Mat& m) ;
+void HarmardProduct(Mat& A, Mat& B, Mat& out) ;
 
 inline void MatScale(Mat& A , float scale , uint64_t strider = 1){
   cblas_sscal(A.rows*A.cols,scale ,A.data,strider);
 }
-
-void HarmardProduct(Mat& A, Mat& B, Mat& out) ;
