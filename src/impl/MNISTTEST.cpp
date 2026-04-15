@@ -2,13 +2,13 @@
 #include "../include/Dataset.h"
 #include "../include/MatMaths.h"
 #include "../include/Model.h"
+#include "../include/Weights.h"
 #include <iostream>
 #include <iomanip>
 
 thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(256*1024*1024);
 
-template <size_t inputParamCount, size_t layerCount>
-void Infer(NeuralNetwork<inputParamCount, layerCount>& model, Mat& inputData, Mat& outputData, size_t test_count) {
+void Infer(NeuralNetwork& model, Mat& inputData, Mat& outputData, size_t test_count) {
   constexpr auto img_size = 28 * 28;
 
   std::cout << "--- Initiating Inference ---\n";
@@ -48,8 +48,8 @@ int main(){
   constexpr auto cols = 28;
   constexpr auto img_size = rows * cols; // 784
 
-  NeuralNetwork<img_size, 2> model({128, 10});
-  model.Init();
+  NeuralNetwork model({128, 10});
+  model.Init(img_size);
 
   {
     DeferFree df;
@@ -72,7 +72,7 @@ int main(){
 
     const auto epochs = 50; 
     const auto learning_rate = 1e-3;
-    const auto train_count = 10000; // 10K
+    const auto train_count = 100; // 10K
 
     std::cout << "--- Initiating Training ---\n";
 
@@ -96,6 +96,8 @@ int main(){
     std::cout << " Total Memory used to train " << __Global_Mat_Allocator->GetStrider() * sizeof(float)/1e6 << " mb .\n";
   }
 
+  SaveModel(model,img_size,"Mnist-128-10.bin");
+
   IDX3 testImages = readImage("/home/chirag/datasets/t10k-images.idx3-ubyte");
   IDX1 testLabels = readImageLabels("/home/chirag/datasets/t10k-labels.idx1-ubyte");
 
@@ -103,21 +105,21 @@ int main(){
     DeferFree df;
 
     Mat testInputData;
-    testInputData.Populate(1, images.data.size(), false);
-    testInputData.Cpy(images.data.data(), images.data.size());
+    testInputData.Populate(1, testImages.data.size(), false);
+    testInputData.Cpy(testImages.data.data(), testImages.data.size());
 
     const auto scale = 1.0f/255.0f;
     MatScale(testInputData, scale);
 
     Mat testOutputData;
-    testOutputData.Populate(1, labels.labels.size() * 10, false);
-    for(size_t i = 0; i < labels.labels.size(); i++) {
+    testOutputData.Populate(1, testLabels.labels.size() * 10, false);
+    for(size_t i = 0; i < testLabels.labels.size(); i++) {
       for(int j = 0; j < 10; j++) {
-        testOutputData.data[(i * 10) + j] = (j == labels.labels[i]) ? 1.0f : 0.0f;
+        testOutputData.data[(i * 10) + j] = (j == testLabels.labels[i]) ? 1.0f : 0.0f;
       }
     }
-
-    Infer(model,testInputData,testOutputData ,100);
+    
+    Infer(model , testInputData , testOutputData ,100);
     std::cout << " Total Memory used to test " << __Global_Mat_Allocator->GetStrider() * sizeof(float)/1e6 << " mb .\n";
   }
 
