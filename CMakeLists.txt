@@ -10,7 +10,6 @@ file(GLOB_RECURSE SOURCES src/*.cpp)
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(BLAS REQUIRED)
-
 find_package(raylib REQUIRED)
 
 target_link_libraries(NeuralNetwork PRIVATE ${BLAS_LIBRARIES})
@@ -29,6 +28,11 @@ target_include_directories(${PROJECT_NAME}
 if (XOR_TEST)
     target_compile_definitions(${PROJECT_NAME} PRIVATE XOR_TEST)
 endif()
+
+if (MNIST_TEST)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE MNIST_TEST)
+endif()
+
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)

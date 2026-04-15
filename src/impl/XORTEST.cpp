@@ -4,6 +4,8 @@
 #include <array>
 #include <iostream>
 
+thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(64);
+
 int main() {
   NeuralNetwork<2, 3> model({2, 3, 1});
   model.Init();
@@ -62,8 +64,8 @@ int main() {
               << " | Prediction: " << std::setprecision(4) << prediction << "\n";
   }
 
-  std::cout << "Total memory usage " << __Global_Mat_Allocator->GetStrider() << "units \n";
-  delete __Global_Mat_Allocator;
+  std::cout << " Total Memory used " << __Global_Mat_Allocator->GetStrider() * sizeof(float)/1e6 << " mb .\n";
+  delete  __Global_Mat_Allocator;
   return 0;
 }
 #endif
