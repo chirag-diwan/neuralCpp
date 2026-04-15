@@ -1,5 +1,4 @@
 #ifdef XOR_TEST
-
 #include "../include/MatMaths.h"
 #include "../include/Model.h"
 #include <array>
