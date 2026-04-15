@@ -77,8 +77,8 @@ struct Mat {
 
   Mat() = default;
   Mat(Mat&&) = default;
-
-  Mat(Mat&) = delete;
+  Mat(Mat&) = default;
+  Mat(const Mat&) = default;
 
   void ViewNoAlloc(uint32_t r, uint32_t c , float* data){
     this->rows = r;
@@ -106,6 +106,11 @@ struct Mat {
     return data[i];
   }
 
+  void operator=(Mat&& mat){
+    this->data = std::move(mat.data);
+    this->rows = mat.rows;
+    this->cols = mat.cols;
+  }
 
   template<typename T>
     void operator|=(const std::vector<T>& vals) {
