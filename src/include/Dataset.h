@@ -4,9 +4,12 @@
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <strings.h>
 #include <vector>
+#include <raylib.h>
 #include "../Utils/Utils.h"
 #include "./MatMaths.h"
+
 
 uint32_t readBE32(std::ifstream &in) {
   uint8_t bytes[4];
@@ -34,7 +37,7 @@ typedef struct {
 
 
 
-IDX3 readImage(std::string filepath){
+IDX3 readImage(const char* filepath){
   std::ifstream file(filepath, std::ios::binary);
   if (!file.is_open()){ ERROR_AND_EXIT("Cannot open file");}
 
@@ -56,7 +59,7 @@ IDX3 readImage(std::string filepath){
 
 
 
-IDX1 readImageLabels(std::string filepath){
+IDX1 readImageLabels(const char* filepath){
   std::ifstream in(filepath, std::ios::binary);
   if(!in.is_open()){
     ERROR_AND_EXIT("Error opening file " , filepath);
@@ -92,10 +95,49 @@ uint8_t getPixel(const IDX3 &img, int imageIndex, int row, int col) {
 // NIGHTLY
 
 namespace Dataset{
-  enum SplitDir{
-    ROW,
-    COL
-  };
+  void Display(const char* imagesPath, const char* labelsPath) {
+    IDX3 images = readImage(imagesPath);
+    IDX1 labels = readImageLabels(labelsPath);
+    std::cout << " --- Read Complete --- \n";
+
+    const auto rows = images.rows;
+    const auto cols = images.cols;
+
+    uint64_t imageIndex = 0;
+    const int scale = 20; // Extracted magic number to prevent arbitrary hardcoding
+
+    InitWindow(800, 600, "Dataset Viewer");
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+      if (IsKeyPressed(KEY_LEFT) && imageIndex > 0) {
+        imageIndex--;
+      } else if (IsKeyPressed(KEY_RIGHT) && imageIndex < images.num_images - 1) { // Prevent out of bounds
+        imageIndex++;
+      }
+
+      BeginDrawing();
+      ClearBackground(RAYWHITE); 
+
+      for(auto i = 0 ; i < rows ; i++){
+        for(auto j = 0 ; j < cols ; j++){
+          auto pixelIndex = imageIndex * rows * cols + i * cols + j;
+          unsigned char brightness = images.data[pixelIndex];
+
+          DrawRectangle(j * scale, i * scale, scale, scale, {brightness, brightness, brightness, 255});
+        }
+      }
+
+      int currentLabel = labels.labels[imageIndex];
+
+      int textX = (cols * scale) + 20; 
+      DrawText(TextFormat("Label: %d", currentLabel), textX, 40, 40, DARKGRAY);
+      DrawText(TextFormat("Index: %llu", imageIndex), textX, 90, 20, GRAY);
+
+      EndDrawing();
+    }
+    CloseWindow();
+  }
 };
 
 

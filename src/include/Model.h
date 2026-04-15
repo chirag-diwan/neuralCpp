@@ -13,13 +13,14 @@
 #include <vector>
 #include "./MatMaths.h"
 
+
 struct Layer {
-  Matrix A;
-  Matrix W;
-  Matrix B;
-  Matrix Z;
-  Matrix delta; 
-  Matrix zSigmaPrime;
+  Mat A;
+  Mat W;
+  Mat B;
+  Mat Z;
+  Mat delta; 
+  Mat zSigmaPrime;
 
   Layer() = default;
 
@@ -34,13 +35,13 @@ struct Layer {
 };
 
 template <size_t inputParamCount, size_t layerCount>
-struct Model {
+struct NeuralNetwork {
   std::array<Layer, layerCount> layers;
   std::array<size_t, layerCount> layerSizes;
 
-  Model();
+  NeuralNetwork();
 
-  Model(std::array<size_t, layerCount>&& ls) : layerSizes(ls) {}
+  NeuralNetwork(std::array<size_t, layerCount>&& ls) : layerSizes(ls) {}
 
   void Init() {
     for (size_t i = 0; i < layerSizes.size(); i++) {
@@ -52,7 +53,7 @@ struct Model {
     }
   }
 
-  ~Model(){}
+  ~NeuralNetwork(){}
 };
 
 
@@ -64,7 +65,7 @@ struct Model {
 
 
 template <size_t inputParamCount, size_t layerCount>
-void Forward(Model<inputParamCount, layerCount>& model, Matrix& input) {
+void Forward(NeuralNetwork<inputParamCount, layerCount>& model, Mat& input) {
   MatMul(input, model.layers[0].W, model.layers[0].Z , CblasNoTrans , CblasNoTrans);
   MatAddInplace(model.layers[0].B, model.layers[0].Z);
   Sigmoid(model.layers[0].Z, model.layers[0].A);
@@ -79,11 +80,11 @@ void Forward(Model<inputParamCount, layerCount>& model, Matrix& input) {
 }
 
 template <size_t inputParamCount, size_t layerCount>
-float Cost(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& output) {
+float Cost(NeuralNetwork<inputParamCount, layerCount>& model, Mat& input, Mat& output) {
   {
     DeferFree df;
     Forward(model, input);
-    Matrix C;
+    Mat C;
     auto& A = model.layers[model.layers.size() - 1].A;
     C.Populate(A.rows, A.cols, false);
     MatSub(A, output, C);
@@ -92,7 +93,7 @@ float Cost(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& out
 }
 
 template <size_t inputParamCount, size_t layerCount>
-void BackProp(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& output, float learningRate ) {
+void BackProp(NeuralNetwork<inputParamCount, layerCount>& model, Mat& input, Mat& output, float learningRate ) {
   for (int i = static_cast<int>(model.layers.size()) - 1; i >= 0; i--) {
     if (i == model.layers.size() - 1) {
       ErrorFinalLayer(model.layers[i], output);
@@ -108,7 +109,7 @@ void BackProp(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& 
       auto& curr = model.layers[i];
 
 
-      Matrix dw;
+      Mat dw;
       if (i == 0) {
         dw.Populate(input.cols, curr.delta.cols, false );
         MatMul(input, curr.delta, dw , CblasTrans , CblasNoTrans);
@@ -125,7 +126,7 @@ void BackProp(Model<inputParamCount, layerCount>& model, Matrix& input, Matrix& 
 
 
 
-void CostGradFinalLayer(Matrix& Activations, Matrix& Outputs, Matrix& out) {
+void CostGradFinalLayer(Mat& Activations, Mat& Outputs, Mat& out) {
   assert(Activations.rows == Outputs.rows && Activations.cols == Outputs.cols);
   assert(Activations.rows == out.rows && Activations.cols == out.cols);
 
@@ -135,11 +136,11 @@ void CostGradFinalLayer(Matrix& Activations, Matrix& Outputs, Matrix& out) {
 }
 
 
-void ErrorFinalLayer(Layer& last, Matrix& Outputs ) {
+void ErrorFinalLayer(Layer& last, Mat& Outputs ) {
   {
     DeferFree df;
     SigmoidPrime(last.Z, last.zSigmaPrime);
-    Matrix costGrad;
+    Mat costGrad;
     costGrad.Populate(last.A.rows, last.A.cols, false);
     CostGradFinalLayer(last.A, Outputs, costGrad);
     HarmardProduct(costGrad, last.zSigmaPrime, last.delta);
@@ -150,7 +151,7 @@ void ErrorLayer(Layer& currLayer, Layer& nextLayer ) {
   {
     DeferFree df;
 
-    Matrix buf;
+    Mat buf;
     buf.Populate(nextLayer.delta.rows, nextLayer.W.rows, false );
 
     // buf = delta^(l+1) * W^(l+1)^T

@@ -15,7 +15,6 @@
 #include <openblas/cblas.h>
 #include "../Utils/Utils.h"
 
-
 class MatAllocator{
   std::unique_ptr<float[]> Pool;
   uint64_t strider = 0;
@@ -49,7 +48,7 @@ class MatAllocator{
   uint64_t GetStrider()const{
     return strider;
   }
-  
+
   void SetStrider(uint64_t val){
     strider =  val;
   }
@@ -60,26 +59,32 @@ extern thread_local MatAllocator* __Global_Mat_Allocator;
 // RAII
 class DeferFree{
   public:
-  uint64_t saved;
-  DeferFree(){
-    ERRORIF(__Global_Mat_Allocator == nullptr,"Global Allocator pointer not set");
-    saved = __Global_Mat_Allocator->GetStrider();
-  }
-  ~DeferFree(){
-    ERRORIF(__Global_Mat_Allocator == nullptr,"Global Allocator pointer not set");
-    __Global_Mat_Allocator->SetStrider(saved);
-  }
+    uint64_t saved;
+    DeferFree(){
+      ERRORIF(__Global_Mat_Allocator == nullptr,"Global Allocator pointer not set");
+      saved = __Global_Mat_Allocator->GetStrider();
+    }
+    ~DeferFree(){
+      ERRORIF(__Global_Mat_Allocator == nullptr,"Global Allocator pointer not set");
+      __Global_Mat_Allocator->SetStrider(saved);
+    }
 };
 
-struct Matrix {
+struct Mat {
   float* data;
   uint32_t rows;
   uint32_t cols;
 
-  Matrix() = default;
-  Matrix(Matrix&&) = default;
+  Mat() = default;
+  Mat(Mat&&) = default;
 
-  Matrix(Matrix&) = delete;
+  Mat(Mat&) = delete;
+
+  void ViewNoAlloc(uint32_t r, uint32_t c , float* data){
+    this->rows = r;
+    this->cols = c;
+    this->data = data;
+  }
 
   void Populate(uint32_t r, uint32_t c, bool rand , float rangeMax = 1) {
     this->rows = r;
@@ -123,10 +128,7 @@ struct Matrix {
         data[i] = static_cast<float>(vals[i]);
       }
     }
-
-
 };
-
 
 
 inline float* TempAlloc(uint64_t rows , uint64_t cols){
@@ -135,7 +137,7 @@ inline float* TempAlloc(uint64_t rows , uint64_t cols){
 }
 
 
-inline void MatMul( Matrix& A,  Matrix& B, Matrix& C , CBLAS_TRANSPOSE TransA , CBLAS_TRANSPOSE TransB) {
+inline void MatMul( Mat& A,  Mat& B, Mat& C , CBLAS_TRANSPOSE TransA , CBLAS_TRANSPOSE TransB) {
   size_t M = (TransA == CblasNoTrans) ? A.rows : A.cols;
   size_t K = (TransA == CblasNoTrans) ? A.cols : A.rows;
 
@@ -157,7 +159,7 @@ inline void MatMul( Matrix& A,  Matrix& B, Matrix& C , CBLAS_TRANSPOSE TransA , 
       C.data, ldc);
 }
 
-inline void MatAddInplace(Matrix& A, Matrix& B) {
+inline void MatAddInplace(Mat& A, Mat& B) {
   assert(A.cols == B.cols);
   assert(A.rows == B.rows);
   for (size_t i = 0; i < A.cols * A.rows; i++) {
@@ -165,7 +167,7 @@ inline void MatAddInplace(Matrix& A, Matrix& B) {
   }
 }
 
-inline void UpdateParameter(Matrix& param, const Matrix& gradient, float learningRate) {
+inline void UpdateParameter(Mat& param, const Mat& gradient, float learningRate) {
   assert(param.rows == gradient.rows && param.cols == gradient.cols);
   for (size_t i = 0; i < param.rows * param.cols; i++) {
     param[i] = param[i] - (learningRate * gradient[i]);
@@ -174,7 +176,7 @@ inline void UpdateParameter(Matrix& param, const Matrix& gradient, float learnin
 
 
 
-inline float ReduceSqr(Matrix& A) {
+inline float ReduceSqr(Mat& A) {
   float result = 0;
   for (size_t i = 0; i < A.cols * A.rows; i++) {
     result += A[i] * A[i];
@@ -182,7 +184,7 @@ inline float ReduceSqr(Matrix& A) {
   return result;
 }
 
-inline float Reduce(Matrix& A) {
+inline float Reduce(Mat& A) {
   float result = 0;
   for (size_t i = 0; i < A.cols * A.rows; i++) {
     result += A[i];
@@ -190,8 +192,8 @@ inline float Reduce(Matrix& A) {
   return result;
 }
 
-void PrintMat(const std::string& name, const Matrix& m) {
-  std::cout << "Matrix " << name 
+void PrintMat(const std::string& name, const Mat& m) {
+  std::cout << "Mat " << name 
     << " (" << m.rows << " x " << m.cols << ")\n";
 
   for (uint32_t r = 0; r < m.rows; ++r) {
@@ -219,21 +221,21 @@ float SigmoidPrime(float a) {
   return sig * (1.0f - sig); // Mathematically more stable evaluation
 }
 
-void Sigmoid(Matrix& A, Matrix& B) {
+void Sigmoid(Mat& A, Mat& B) {
   assert(A.rows == B.rows && A.cols == B.cols);
   for (size_t i = 0; i < A.rows * A.cols; i++) {
     B[i] = Sigmoid(A[i]);
   }
 }
 
-void SigmoidPrime(Matrix& A, Matrix& B) {
+void SigmoidPrime(Mat& A, Mat& B) {
   assert(A.rows == B.rows && A.cols == B.cols);
   for (size_t i = 0; i < A.rows * A.cols; i++) {
     B[i] = SigmoidPrime(A[i]);
   }
 }
 
-void MatSub(Matrix& A, Matrix& B, Matrix& C) {
+void MatSub(Mat& A, Mat& B, Mat& C) {
 
   assert(A.cols == B.cols && A.rows == B.rows);
   assert(A.cols == C.cols && A.rows == C.rows);
@@ -242,8 +244,7 @@ void MatSub(Matrix& A, Matrix& B, Matrix& C) {
   }
 }
 
-size_t ArgMax(const Matrix& m) {
-  // Ensure we are scanning a 1D vector representation
+size_t ArgMax(const Mat& m) {
   assert(m.rows == 1 || m.cols == 1); 
 
   size_t max_index = 0;
@@ -259,9 +260,11 @@ size_t ArgMax(const Matrix& m) {
   return max_index;
 }
 
+inline void MatScale(Mat& A , float scale , uint64_t strider = 1){
+  cblas_sscal(A.rows*A.cols,scale ,A.data,strider);
+}
 
-
-void HarmardProduct(Matrix& A, Matrix& B, Matrix& out) {
+void HarmardProduct(Mat& A, Mat& B, Mat& out) {
   assert(A.rows == B.rows && A.cols == B.cols);
   assert(A.rows == out.rows && A.cols == out.cols);
 

@@ -11,7 +11,10 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(BLAS REQUIRED)
 
+find_package(raylib REQUIRED)
+
 target_link_libraries(NeuralNetwork PRIVATE ${BLAS_LIBRARIES})
+target_link_libraries(NeuralNetwork PRIVATE raylib)
 
 target_compile_options(NeuralNetwork PRIVATE
 )
@@ -23,12 +26,10 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Utils
 )
 
-# 3. Clean macro definitions
 if (XOR_TEST)
     target_compile_definitions(${PROJECT_NAME} PRIVATE XOR_TEST)
 endif()
 
-# 4. Strict compiler warnings
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
 else()
