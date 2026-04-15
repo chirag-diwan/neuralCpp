@@ -31,12 +31,12 @@ This implementation contains the data reader and praser implementation only for 
 ----
 
 # MNIST Traning Example
-    While building the binary , if you provide option -DMNIST_TEST=ON then the binary will execute a MNIST train and inference test. NOTE : You have to manualy change the test and train data set file path.
+While building the binary , if you provide option -DMNIST_TEST=ON then the binary will execute a MNIST train and inference test. NOTE : You have to manualy change the test and train data set file path.
 ![MNIST Test Image](./imgs/MNISTTEST.png)
 
 
 # XOR Traning Example
-    While building the binary , if you provide option -DXOR_TEST=ON then the binary will execute a XOR train and inference test.
+While building the binary , if you provide option -DXOR_TEST=ON then the binary will execute a XOR train and inference test.
 ![XOR Test Image](./imgs/XORTEST.png)
 
 
