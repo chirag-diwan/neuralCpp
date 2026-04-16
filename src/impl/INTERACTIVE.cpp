@@ -8,20 +8,55 @@
 #include "../include/Weights.h"
 
 
+inline float Activation(float a){
+  return Sigmoid(a);
+}
+
+inline float ActivationPrime(float a){
+  return SigmoidPrime(a) ;
+}
+
+inline void Activation(Mat& src , Mat& dst){
+  assert(src.rows == dst.rows && src.cols == dst.cols);
+  for(size_t i = 0 ; i < src.rows*src.cols ; i++){
+    dst[i] = Activation(src[i]);
+  }
+}
+
+inline void ActivationPrime(Mat& src , Mat& dst){
+  assert(src.rows == dst.rows && src.cols == dst.cols);
+  for(size_t i = 0 ; i < src.rows*src.cols ; i++){
+    dst[i] = ActivationPrime(src[i]);
+  }
+}
+
+
+
 thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(1024*1024);
 
-float Infer(NeuralNetwork& model, Mat& input) {
-  Forward(model, input);
-  auto predicted_indx = ArgMax(model.layers[model.layers.size() - 1].A);
-  return predicted_indx;
+
+float Infer(NeuralNetwork& model, Mat& inputData) {
+  constexpr auto img_size = 28 * 28;
+  const size_t BATCH_SIZE = model.batchsize;
+
+    DeferFree df;
+    Mat input;
+    input.ViewNoAlloc(BATCH_SIZE, img_size, inputData.data);
+    Forward(model, input);
+
+    auto& final_layer_A = model.layers[model.layers.size() - 1].A;
+    PrintMat("Final A", final_layer_A, true);
+    Mat view;
+    view.ViewNoAlloc(1,final_layer_A.cols,final_layer_A.data);
+    return ArgMax(view);
 }
+
 
 class InteractiveInferEngine{
   private:
-    uint32_t width = 800;
-    uint32_t height = 600;
-
     uint32_t tile_size = 20;
+
+    uint32_t batchsize = 0;
 
     NeuralNetwork& model;
 
@@ -33,16 +68,17 @@ class InteractiveInferEngine{
   public:
     InteractiveInferEngine(NeuralNetwork& model) : model(model){}
 
-    void Init(uint32_t rows , uint32_t cols){
+    void Init(uint32_t rows , uint32_t cols , uint32_t batchsize){
       this->rows = rows;
       this->cols = cols;
+      this->batchsize = batchsize;
 
 
-      grid.resize(rows*cols);
+      grid.resize(batchsize*rows*cols);
 
       tile_size = 600/rows;
 
-      InitWindow(width, height, "Interactive Inference");
+      InitWindow(cols*tile_size, rows*tile_size, "Interactive Inference");
       SetTargetFPS(60);
     }
 
@@ -77,14 +113,14 @@ class InteractiveInferEngine{
           int gridX = static_cast<int>(mousepos.x) / tile_size;
           int gridY = static_cast<int>(mousepos.y) / tile_size;
 
-          // 4. Bounds Checking
+          
           if (gridX >= 0 && gridX < cols && gridY >= 0 && gridY < rows) {
 
-            // Core brush stroke
+            
             grid[gridY * cols + gridX] = 255;
 
-            // 3. Fake Anti-Aliasing / Brush Thickening to match MNIST domain
-            // Apply half-intensity to adjacent pixels if they are within bounds
+            
+            
             if (gridX + 1 < cols && grid[gridY * cols + (gridX + 1)] == 0) 
               grid[gridY * cols + (gridX + 1)] = 128;
             if (gridX - 1 >= 0 && grid[gridY * cols + (gridX - 1)] == 0) 
@@ -97,14 +133,18 @@ class InteractiveInferEngine{
         }
 
         BeginDrawing();
-        ClearBackground(BLACK); // Ensure background clears properly
+        ClearBackground(BLACK); 
         for(int i = 0 ; i < grid.size() ; i++){
           uint32_t x = i % cols;
           uint32_t y = i / cols;
           uint8_t color = grid[i];
+      
+          if(x < 4 || x > 23 || y < 4 || y > 23){
 
-          // Draw the grid cells
-          DrawRectangle(x * tile_size, y * tile_size, tile_size, tile_size, {color, color, color, 255});
+            DrawRectangle(x * tile_size, y * tile_size, tile_size, tile_size, RED);
+          }else{
+            DrawRectangle(x * tile_size, y * tile_size, tile_size, tile_size, {color, color, color, 255});
+          }
         }
         EndDrawing();
       }
@@ -113,9 +153,9 @@ class InteractiveInferEngine{
 };
 
 int main(){
-  NeuralNetwork model  = NNLoadModel("./Mnist-128-10.bin" , 1);
+  NeuralNetwork model  = NNLoadModel("./MNIST-TEST.bin");
   InteractiveInferEngine engine(model);
-  engine.Init(28 , 28);
+  engine.Init(28 , 28 , model.batchsize);
   engine.Run();
   delete __Global_Mat_Allocator;
 }

@@ -40,12 +40,15 @@ struct Layer {
 struct NeuralNetwork {
   std::vector<Layer> layers;
   std::vector<size_t> layerSizes;
+  
+  uint32_t batchsize;
 
   NeuralNetwork() = delete;
 
   NeuralNetwork(const std::vector<size_t>&& ls) : layerSizes(ls) {}
 
   void Init(size_t inputParamCount , size_t batchSize) {
+    batchsize = batchSize;
     layers.resize(layerSizes.size());
     for (size_t i = 0; i < layerSizes.size(); i++) {
       if (i == 0) {

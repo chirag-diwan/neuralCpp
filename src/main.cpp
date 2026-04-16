@@ -1,18 +1,20 @@
+#ifndef MNIST_TEST
+#ifndef XOR_TEST
+#ifndef INTERACTIVE_INFERENCE
+
 #include "./include/Model.h"
 #include "include/Dataset.h"
 #include "include/MatMaths.h"
 #include "include/Weights.h"
 #include <cassert>
-#include <cmath>
 
 
 thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(128*1024*1024);
 
 void Infer(NeuralNetwork& model, Mat& inputData, Mat& outputData, size_t test_count) {
   constexpr auto img_size = 28 * 28;
-  
-  // Extract batch size dynamically from the loaded model's architecture
-  const size_t BATCH_SIZE = model.layers[0].A.rows;
+
+  const size_t BATCH_SIZE = model.batchsize;
 
   std::cout << "--- Initiating Inference ---\n";
   size_t correct_predictions = 0;
@@ -61,7 +63,7 @@ void Infer(NeuralNetwork& model, Mat& inputData, Mat& outputData, size_t test_co
 
   float accuracy = (static_cast<float>(correct_predictions) / processed_count) * 100.0f;
   std::cout << "Test accuracy: " << std::fixed << std::setprecision(2) << accuracy 
-            << "% (" << correct_predictions << "/" << processed_count << ")\n";
+    << "% (" << correct_predictions << "/" << processed_count << ")\n";
 }
 
 inline float Activation(float a){
@@ -92,13 +94,13 @@ int main(){
   IDX3 testImages = readImage("/home/chirag/datasets/train-images.idx3-ubyte");
   IDX1 testLabels = readImageLabels("/home/chirag/datasets/train-labels.idx1-ubyte");
 
-  const auto img_rows = testImages.rows;
-  const auto img_cols = testImages.cols;
-  const auto img_size = img_rows*img_cols;
+  //const auto img_rows = testImages.rows;
+  //const auto img_cols = testImages.cols;
+  //const auto img_size = img_rows*img_cols;
 
-  const auto BATCH_SIZE = 20;
+  //const auto BATCH_SIZE = 20;
 
-  NeuralNetwork model = NNLoadModel("./MNIST-BATCH-20-128-10.bin",  BATCH_SIZE);
+  NeuralNetwork model = NNLoadModel("./MNIST-BATCH-20-128-10.bin");
 
   //{
   //  DeferFree df;
@@ -169,3 +171,6 @@ int main(){
 
   delete __Global_Mat_Allocator;
 }
+#endif
+#endif
+#endif
