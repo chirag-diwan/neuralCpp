@@ -172,14 +172,42 @@ inline void MatAddInplace(Mat& A, Mat& B) {
   }
 }
 
-inline void UpdateParameter(Mat& param, const Mat& gradient, float learningRate) {
-  assert(param.rows == gradient.rows && param.cols == gradient.cols);
-  for (size_t i = 0; i < param.rows * param.cols; i++) {
-    param[i] = param[i] - (learningRate * gradient[i]);
+
+void PrintMat(const std::string& name, const Mat& m , bool onlySize) {
+  std::cout << "Mat " << name 
+    << " (" << m.rows << " x " << m.cols << ")\n";
+
+  if(!onlySize){
+    for (uint32_t r = 0; r < m.rows; ++r) {
+      std::cout << "  [";
+      for (uint32_t c = 0; c < m.cols; ++c) {
+        std::cout << std::setw(8) << std::setprecision(4) << std::fixed
+          << m.data[r * m.cols + c] << " ";
+        if (c != m.cols - 1) {
+          std::cout << ',';
+        }
+      }
+      std::cout << "]\n";
+    }
+  }
+}
+
+inline void MatAddBias(const Mat& B , Mat& Z) {
+  assert(Z.cols == B.cols && B.rows == 1);
+  
+  for (size_t row = 0; row < Z.rows; row++) {
+    for (size_t col = 0; col < Z.cols; col++) {
+      Z.data[row * Z.cols + col] += B.data[col];
+    }
   }
 }
 
 
+inline void UpdateParameter(Mat& param, const Mat& gradient, float learningRate, size_t BATCH_SIZE) {
+  assert(param.rows == gradient.rows && param.cols == gradient.cols);
+  float effective_rate = -(learningRate / static_cast<float>(BATCH_SIZE));
+  cblas_saxpy(param.rows * param.cols, effective_rate, gradient.data, 1, param.data, 1);
+}
 
 inline float ReduceSqr(Mat& A) {
   float result = 0;
@@ -189,6 +217,27 @@ inline float ReduceSqr(Mat& A) {
   return result;
 }
 
+inline void UpdateParameterBias(Mat &bias, const Mat &gradient, float learningRate, size_t BATCH_SIZE){
+  assert(bias.rows == 1 && bias.cols == gradient.cols && gradient.rows == BATCH_SIZE);
+  {
+    DeferFree df;
+    Mat buf;
+    buf.Populate(bias.rows, bias.cols,false);
+
+    for(size_t i = 0; i < buf.rows * buf.cols; i++) {
+      buf.data[i] = 0.0f;
+    }
+
+    for(size_t r = 0; r < BATCH_SIZE; r++) {
+      for(size_t c = 0; c < gradient.cols; c++) {
+        buf.data[c] += gradient.data[r * gradient.cols + c];
+      }
+    }
+    UpdateParameter(bias, buf,learningRate, BATCH_SIZE);
+  }
+}
+
+
 inline float Reduce(Mat& A) {
   float result = 0;
   for (size_t i = 0; i < A.cols * A.rows; i++) {
@@ -197,31 +246,34 @@ inline float Reduce(Mat& A) {
   return result;
 }
 
-void PrintMat(const std::string& name, const Mat& m) {
-  std::cout << "Mat " << name 
-    << " (" << m.rows << " x " << m.cols << ")\n";
 
-  for (uint32_t r = 0; r < m.rows; ++r) {
-    std::cout << "  [";
-    for (uint32_t c = 0; c < m.cols; ++c) {
-      std::cout << std::setw(8) << std::setprecision(4) << std::fixed
-        << m.data[r * m.cols + c] << " ";
-      if (c != m.cols - 1) {
-        std::cout << ',';
-      }
-    }
-    std::cout << "]\n";
-  }
+inline float Activation(float a); //forward declare activation
+inline float ActivationPrime(float a); //forward declare activation prime
+inline void Activation(Mat& src , Mat& dst); //forward declare activation
+inline void ActivationPrime(Mat& mat , Mat& dst); //forward declare activation prime
+
+inline float leakyReLU(float a){
+  return a > 0 ? a : 0.01*a;
+}
+
+inline float leakyReLUPrime(float a){
+  return a > 0 ? 1 : 0.01;
 }
 
 
+inline float ReLU(float a){
+  return a > 0 ? a : 0;
+}
 
+inline float ReLUPrime(float a){
+  return a > 0 ? 1 : 0;
+}
 
-float Sigmoid(float a) {
+inline float Sigmoid(float a) {
   return 1.0f / (1.0f + std::exp(-a));
 }
 
-float SigmoidPrime(float a) {
+inline float SigmoidPrime(float a) {
   float sig = Sigmoid(a);
   return sig * (1.0f - sig); // Mathematically more stable evaluation
 }

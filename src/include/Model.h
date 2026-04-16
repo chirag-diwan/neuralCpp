@@ -14,6 +14,7 @@
 #include "./MatMaths.h"
 
 
+
 struct Layer {
   Mat A;
   Mat W;
@@ -26,13 +27,13 @@ struct Layer {
   Layer(const Layer& layer) = default;
     
 
-  void Populate(size_t currNeurons, size_t prevNeurons) {
-    A.Populate(1, currNeurons, false );
+  void Populate(size_t currNeurons, size_t prevNeurons , size_t batchSize) {
+    A.Populate(batchSize, currNeurons, false );
     W.Populate(prevNeurons, currNeurons, true );
     B.Populate(1, currNeurons, true );
-    Z.Populate(1, currNeurons, false );
-    delta.Populate(1, currNeurons, false );
-    zSigmaPrime.Populate(1, currNeurons, false );
+    Z.Populate(batchSize, currNeurons, false );
+    delta.Populate(batchSize, currNeurons, false );
+    zSigmaPrime.Populate(batchSize, currNeurons, false );
   }
 };
 
@@ -44,13 +45,13 @@ struct NeuralNetwork {
 
   NeuralNetwork(const std::vector<size_t>&& ls) : layerSizes(ls) {}
 
-  void Init(size_t inputParamCount) {
+  void Init(size_t inputParamCount , size_t batchSize) {
     layers.resize(layerSizes.size());
     for (size_t i = 0; i < layerSizes.size(); i++) {
       if (i == 0) {
-        layers[i].Populate(layerSizes[i], inputParamCount );
+        layers[i].Populate(layerSizes[i], inputParamCount  , batchSize);
       }else{
-        layers[i].Populate(layerSizes[i], layerSizes[i - 1] );
+        layers[i].Populate(layerSizes[i], layerSizes[i - 1] , batchSize);
       }
     }
   }
@@ -62,15 +63,15 @@ struct NeuralNetwork {
 
 void Forward(NeuralNetwork& model, Mat& input) {
   MatMul(input, model.layers[0].W, model.layers[0].Z , CblasNoTrans , CblasNoTrans);
-  MatAddInplace(model.layers[0].B, model.layers[0].Z);
-  Sigmoid(model.layers[0].Z, model.layers[0].A);
+  MatAddBias(model.layers[0].B, model.layers[0].Z);
+  Activation(model.layers[0].Z, model.layers[0].A);
 
   for (size_t i = 1; i < model.layers.size(); i++) {
     auto& prev = model.layers[i - 1];
     auto& layer = model.layers[i];
     MatMul(prev.A, layer.W, layer.Z , CblasNoTrans , CblasNoTrans);
-    MatAddInplace(layer.B, layer.Z);
-    Sigmoid(layer.Z, layer.A);
+    MatAddBias(layer.B, layer.Z);
+    Activation(layer.Z, layer.A);
   }
 }
 
@@ -99,7 +100,7 @@ void CostGradFinalLayer(Mat& Activations, Mat& Outputs, Mat& out) {
 void ErrorFinalLayer(Layer& last, Mat& Outputs ) {
   {
     DeferFree df;
-    SigmoidPrime(last.Z, last.zSigmaPrime);
+    ActivationPrime(last.Z, last.zSigmaPrime);
     Mat costGrad;
     costGrad.Populate(last.A.rows, last.A.cols, false);
     CostGradFinalLayer(last.A, Outputs, costGrad);
@@ -117,12 +118,12 @@ void ErrorLayer(Layer& currLayer, Layer& nextLayer ) {
     // buf = delta^(l+1) * W^(l+1)^T
     MatMul(nextLayer.delta, nextLayer.W, buf , CblasNoTrans , CblasTrans);
 
-    SigmoidPrime(currLayer.Z, currLayer.zSigmaPrime);
+    ActivationPrime(currLayer.Z, currLayer.zSigmaPrime);
     HarmardProduct(buf, currLayer.zSigmaPrime, currLayer.delta);
   }
 }
 
-void BackProp(NeuralNetwork& model, Mat& input, Mat& output, float learningRate ) {
+void BackProp(NeuralNetwork& model, Mat& input, Mat& output, float learningRate , size_t BATCH_SIZE) {
   for (int i = static_cast<int>(model.layers.size()) - 1; i >= 0; i--) {
     if (i == model.layers.size() - 1) {
       ErrorFinalLayer(model.layers[i], output);
@@ -147,12 +148,22 @@ void BackProp(NeuralNetwork& model, Mat& input, Mat& output, float learningRate 
         dw.Populate(prev.A.cols, curr.delta.cols, false );
         MatMul(prev.A, curr.delta, dw , CblasTrans , CblasNoTrans);
       }
-      UpdateParameter(curr.W, dw, learningRate);
-      UpdateParameter(curr.B, curr.delta, learningRate);
+      UpdateParameter(curr.W, dw, learningRate , BATCH_SIZE);
+      UpdateParameterBias(curr.B, curr.delta, learningRate , BATCH_SIZE);
     }
   }
 }
 
 
+void PrintModel(NeuralNetwork& model , bool showSize){
+  for(const auto& layer : model.layers){
+    PrintMat("A" , layer.A,showSize);
+    PrintMat("W" , layer.W,showSize);
+    PrintMat("B" , layer.B,showSize);
+    PrintMat("Z" , layer.Z,showSize);
+    PrintMat("delta" , layer.delta , showSize); 
+    PrintMat("zSigmaPrime" , layer.zSigmaPrime , showSize);
+  }
+}
 
 

@@ -7,7 +7,7 @@ thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(64);
 
 int main() {
   NeuralNetwork model({2, 3, 1});
-  model.Init(2);
+  model.Init(2 , 1);
   
   Mat input;
   input.Populate(1, 2, false); 

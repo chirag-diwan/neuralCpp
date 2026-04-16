@@ -49,7 +49,7 @@ int main(){
   constexpr auto img_size = rows * cols; // 784
 
   NeuralNetwork model({128, 10});
-  model.Init(img_size);
+  model.Init(img_size , 1);
 
   {
     DeferFree df;

@@ -2,6 +2,7 @@
 
 #include "../include/Model.h"
 #include "MatMaths.h"
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <ostream>
@@ -57,7 +58,7 @@ void SaveModel(const NeuralNetwork& model, uint32_t inputParamCount, const std::
     }
 }
 
-NeuralNetwork NNLoadModel(const std::string& filepath) {
+NeuralNetwork NNLoadModel(const std::string& filepath , size_t BATCH_SIZE) {
     std::ifstream in(filepath, std::ios::binary);
     if (!in.is_open()) {
         throw std::runtime_error("Failed to open filepath for reading.");
@@ -78,7 +79,7 @@ NeuralNetwork NNLoadModel(const std::string& filepath) {
 
     // 2. Provision Memory Grid
     NeuralNetwork model(std::move(layerSizes));
-    model.Init(inputParamCount);
+    model.Init(inputParamCount , BATCH_SIZE);
 
     // 3. Read Payload: Hydrate pre-allocated matrices
     for (auto& layer : model.layers) {
