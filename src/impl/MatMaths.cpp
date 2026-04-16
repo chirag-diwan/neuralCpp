@@ -74,33 +74,24 @@ float& Mat::operator[](size_t i) const {
 
 
 
-void PrintMat(const std::string& name, const Mat& m) {
+
+void PrintMat(const std::string& name, const Mat& m , bool onlySize) {
   std::cout << "Mat " << name 
     << " (" << m.rows << " x " << m.cols << ")\n";
 
-  for (uint32_t r = 0; r < m.rows; ++r) {
-    std::cout << "  [";
-    for (uint32_t c = 0; c < m.cols; ++c) {
-      std::cout << std::setw(8) << std::setprecision(4) << std::fixed
-        << m.data[r * m.cols + c] << " ";
-      if (c != m.cols - 1) {
-        std::cout << ',';
+  if(!onlySize){
+    for (uint32_t r = 0; r < m.rows; ++r) {
+      std::cout << "  [";
+      for (uint32_t c = 0; c < m.cols; ++c) {
+        std::cout << std::setw(8) << std::setprecision(4) << std::fixed
+          << m.data[r * m.cols + c] << " ";
+        if (c != m.cols - 1) {
+          std::cout << ',';
+        }
       }
+      std::cout << "]\n";
     }
-    std::cout << "]\n";
   }
-}
-
-
-
-
-float Sigmoid(float a) {
-  return 1.0f / (1.0f + std::exp(-a));
-}
-
-float SigmoidPrime(float a) {
-  float sig = Sigmoid(a);
-  return sig * (1.0f - sig); // Mathematically more stable evaluation
 }
 
 void Sigmoid(Mat& A, Mat& B) {
@@ -141,6 +132,7 @@ size_t ArgMax(const Mat& m) {
   }
   return max_index;
 }
+
 void HarmardProduct(Mat& A, Mat& B, Mat& out) {
   assert(A.rows == B.rows && A.cols == B.cols);
   assert(A.rows == out.rows && A.cols == out.cols);
