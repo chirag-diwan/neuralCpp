@@ -1,3 +1,4 @@
+#define MNIST_TEST
 #ifdef MNIST_TEST
 
 #include "../include/Model.h"
@@ -82,11 +83,11 @@ inline void ActivationPrime(Mat& src , Mat& dst){
 
 int main(){
 
-  IDX3 testImages = readImage("/home/chirag/datasets/train-images.idx3-ubyte");
-  IDX1 testLabels = readImageLabels("/home/chirag/datasets/train-labels.idx1-ubyte");
+  IDX3 trainImages = readImage("/home/chirag/datasets/train-images.idx3-ubyte");
+  IDX1 trainLabels = readImageLabels("/home/chirag/datasets/train-labels.idx1-ubyte");
 
-  const auto img_rows = testImages.rows;
-  const auto img_cols = testImages.cols;
+  const auto img_rows = trainImages.rows;
+  const auto img_cols = trainImages.cols;
   const auto img_size = img_rows*img_cols;
 
   const auto BATCH_SIZE = 20;
@@ -103,17 +104,17 @@ int main(){
     DeferFree df;
   
     Mat testInputData;
-    testInputData.Populate(1, testImages.data.size(), false);
-    testInputData.Cpy(testImages.data.data(), testImages.data.size());
+    testInputData.Populate(1, trainImages.data.size(), false);
+    testInputData.Cpy(trainImages.data.data(), trainImages.data.size());
   
     const auto scale = 1.0f/255.0f;
     MatScale(testInputData, scale);
   
     Mat testOutputData;
-    testOutputData.Populate(1, testLabels.labels.size() * 10, false);
-    for(size_t i = 0; i < testLabels.labels.size(); i++) {
+    testOutputData.Populate(1, trainLabels.labels.size() * 10, false);
+    for(size_t i = 0; i < trainLabels.labels.size(); i++) {
       for(int j = 0; j < 10; j++) {
-        testOutputData.data[(i * 10) + j] = (j == testLabels.labels[i]) ? 1.0f : 0.0f;
+        testOutputData.data[(i * 10) + j] = (j == trainLabels.labels[i]) ? 1.0f : 0.0f;
       }
     }
  
@@ -144,8 +145,13 @@ int main(){
   
   SaveModel(model,28*28,"MNIST-TEST.bin");
 
+
+    IDX3 testImages = readImage("/home/chirag/datasets/t10k-images.idx3-ubyte");
+    IDX1 testLabels = readImageLabels("/home/chirag/datasets/t10k-labels.idx1-ubyte");
+
   {
     DeferFree df;
+
 
     Mat testInputData;
     testInputData.Populate(1, testImages.data.size(), false);
