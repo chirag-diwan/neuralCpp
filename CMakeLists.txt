@@ -27,6 +27,7 @@ target_include_directories(${PROJECT_NAME}
 
 set(XOR_TEST OFF CACHE bool "Enable XOR test")
 set(MNIST_TEST OFF CACHE bool "Enable MNIST test")
+set(INTERACTIVE_INFERENCE OFF CACHE bool "Enable MNIST test")
 
 if (XOR_TEST)
     target_compile_definitions(${PROJECT_NAME} PRIVATE XOR_TEST)
@@ -36,6 +37,9 @@ if (MNIST_TEST)
     target_compile_definitions(${PROJECT_NAME} PRIVATE MNIST_TEST)
 endif()
 
+if (INTERACTIVE_INFERENCE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE INTERACTIVE_INFERENCE)
+endif()
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)

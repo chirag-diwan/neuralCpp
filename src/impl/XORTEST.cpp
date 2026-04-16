@@ -3,11 +3,33 @@
 #include "../include/Model.h"
 #include <iostream>
 
+
+
+inline void Activation(Mat& src , Mat& dst){
+  assert(src.rows == dst.rows && src.cols == dst.cols);
+  for(size_t i = 0 ; i < src.rows*src.cols ; i++){
+    dst[i] = Sigmoid(src[i]);
+  }
+}
+
+inline void ActivationPrime(Mat& src , Mat& dst){
+  assert(src.rows == dst.rows && src.cols == dst.cols);
+  for(size_t i = 0 ; i < src.rows*src.cols ; i++){
+    dst[i] = SigmoidPrime(src[i]);
+  }
+}
+
+
 thread_local MatAllocator* __Global_Mat_Allocator = new MatAllocator(64);
 
 int main() {
+  ActivationProfile Profile = {
+    .Activation = Activation,
+    .ActivationPrime = ActivationPrime,
+  };
+
   NeuralNetwork model({2, 3, 1});
-  model.Init(2);
+  model.Init(2 , 1 , Profile);
   
   Mat input;
   input.Populate(1, 2, false); 
@@ -27,14 +49,14 @@ int main() {
     float epochCost = 0.0f;
 
     for (size_t i = 0; i < 4; i++) {
-      // 4. Zero-allocation data transfer. Direct hardware-level memory write.
+      
       input[0] = inputData[i][0];
       input[1] = inputData[i][1];
       output[0] = outputData[i][0];
 
-      // Cost and BackProp handle their own temporary memory via DeferFree.
+      
       epochCost += Cost(model, input, output);
-      BackProp(model, input, output, learningRate);
+      BackProp(model, input, output, learningRate , 1);
     }
 
     if (epoch % 2000 == 0) {
@@ -49,8 +71,8 @@ int main() {
     input[0] = inputData[i][0];
     input[1] = inputData[i][1];
     
-    // 5. You forgot to scope your final inference pass. 
-    // Without this DeferFree, your final predictions will leak memory into the global allocator.
+    
+    
     {
       DeferFree df; 
       Forward(model, input);

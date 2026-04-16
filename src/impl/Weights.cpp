@@ -1,11 +1,11 @@
 #include "../include/Weights.h"
 
 void writeMatrix(std::ofstream& out, const Mat& mat) {
-    // Write explicit metadata dimensions
+    
     out.write(reinterpret_cast<const char*>(&mat.rows), sizeof(uint32_t));
     out.write(reinterpret_cast<const char*>(&mat.cols), sizeof(uint32_t));
     
-    // Write the contiguous block of floats
+    
     out.write(reinterpret_cast<const char*>(mat.data), mat.rows * mat.cols * sizeof(float));
 }
 
@@ -14,12 +14,12 @@ void readMatrix(std::ifstream& in, Mat& mat) {
     in.read(reinterpret_cast<char*>(&r), sizeof(uint32_t));
     in.read(reinterpret_cast<char*>(&c), sizeof(uint32_t));
 
-    // Structural integrity check
+    
     if (r != mat.rows || c != mat.cols) {
         throw std::runtime_error("Binary file architecture mismatch: Expected dimensions do not match pre-allocated matrix.");
     }
 
-    // Read directly into the memory provisioned by __Global_Mat_Allocator
+    
     in.read(reinterpret_cast<char*>(mat.data), r * c * sizeof(float));
 }
 
@@ -29,8 +29,10 @@ void SaveModel(const NeuralNetwork& model, uint32_t inputParamCount, const std::
     if (!out.is_open()) {
         throw std::runtime_error("Failed to open filepath for writing.");
     }
-
-    // 1. Write Header: Topology Data
+    
+    
+    uint32_t batchSize = static_cast<uint32_t>(model.batchsize);
+    out.write(reinterpret_cast<const char*>(&batchSize),sizeof(uint32_t));
     uint32_t numLayers = static_cast<uint32_t>(model.layerSizes.size());
     out.write(reinterpret_cast<const char*>(&numLayers), sizeof(uint32_t));
     out.write(reinterpret_cast<const char*>(&inputParamCount), sizeof(uint32_t));
@@ -40,7 +42,7 @@ void SaveModel(const NeuralNetwork& model, uint32_t inputParamCount, const std::
         out.write(reinterpret_cast<const char*>(&s), sizeof(uint32_t));
     }
 
-    // 2. Write Payload: Iteratively dump matrices maintaining structural order
+    
     for (const auto& layer : model.layers) {
         writeMatrix(out, layer.A);
         writeMatrix(out, layer.W);
@@ -51,15 +53,17 @@ void SaveModel(const NeuralNetwork& model, uint32_t inputParamCount, const std::
     }
 }
 
-NeuralNetwork NNLoadModel(const std::string& filepath) {
+NeuralNetwork NNLoadModel(const std::string& filepath , ActivationProfile& Profile) {
     std::ifstream in(filepath, std::ios::binary);
     if (!in.is_open()) {
         throw std::runtime_error("Failed to open filepath for reading.");
     }
 
-    // 1. Read Header: Reconstruct Topology
+    
+    uint32_t batchsize;
     uint32_t numLayers = 0;
     uint32_t inputParamCount = 0;
+    in.read(reinterpret_cast<char*>(&batchsize),sizeof(uint32_t));
     in.read(reinterpret_cast<char*>(&numLayers), sizeof(uint32_t));
     in.read(reinterpret_cast<char*>(&inputParamCount), sizeof(uint32_t));
 
@@ -70,11 +74,10 @@ NeuralNetwork NNLoadModel(const std::string& filepath) {
         layerSizes[i] = static_cast<size_t>(s);
     }
 
-    // 2. Provision Memory Grid
     NeuralNetwork model(std::move(layerSizes));
-    model.Init(inputParamCount);
+    model.Init(inputParamCount , batchsize , Profile);
 
-    // 3. Read Payload: Hydrate pre-allocated matrices
+    
     for (auto& layer : model.layers) {
         readMatrix(in, layer.A);
         readMatrix(in, layer.W);
