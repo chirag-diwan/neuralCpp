@@ -1,4 +1,3 @@
-#define MNIST_TEST
 #ifdef MNIST_TEST
 
 #include "../include/Model.h"
